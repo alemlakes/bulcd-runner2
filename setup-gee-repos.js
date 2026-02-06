@@ -386,6 +386,49 @@ function generateModuleMap(username) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Caller Script Management
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Copy/update caller scripts from gee_modules to scripts_to_run
+ * Only copies from r-2903-Dev/BULC/BULCD/BULCD-Callers/BULCD-Caller/
+ */
+function updateCallerScripts() {
+  const scriptsDir = path.join(config.scriptDir, 'scripts_to_run');
+  const callerSourceDir = path.join(config.geeModulesDir, 'r-2903-Dev/BULC/BULCD/BULCD-Callers/BULCD-Caller');
+  
+  // Ensure scripts_to_run directory exists
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  
+  if (!fs.existsSync(callerSourceDir)) {
+    console.log(Style.warning(`Caller source not found: ${callerSourceDir}`));
+    return;
+  }
+  
+  let copiedCount = 0;
+  
+  // Copy all BULCD-Caller-*.js files from the source directory
+  const entries = fs.readdirSync(callerSourceDir, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.startsWith('BULCD-Caller-') && entry.name.endsWith('.js')) {
+      const srcPath = path.join(callerSourceDir, entry.name);
+      const destPath = path.join(scriptsDir, entry.name);
+      
+      fs.copyFileSync(srcPath, destPath);
+      console.log(Style.success(`Updated: scripts_to_run/${entry.name}`));
+      copiedCount++;
+    }
+  }
+  
+  if (copiedCount === 0) {
+    console.log(Style.warning('No BULCD-Caller scripts found'));
+  } else {
+    console.log(Style.info(`Updated ${copiedCount} caller script(s)`));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Main
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -486,6 +529,10 @@ ${Style.bold('Authentication:')}
 
   // Generate module map
   generateModuleMap(config.geeUsername);
+
+  // Copy caller scripts to scripts_to_run/
+  section('Updating Caller Scripts');
+  updateCallerScripts();
 
   // Summary
   section('Summary');
