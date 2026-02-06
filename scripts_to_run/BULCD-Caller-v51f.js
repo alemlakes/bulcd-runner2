@@ -170,6 +170,15 @@ print("Parameters for post run analysis", var_args_analysis)
 
 var bulcD_output = interpretResults(var_args_analysis);
 
+Export.image.toAsset({
+  image: finalBulcProbs.clip(inputParameters.defaultStudyArea),
+  description: 'Export_BULCD_Final_Probabilities',
+  assetId: "projects/api-project-269347469410/BULCD_Result_" + inputParameters.theTargetYear + "_" + theVersion,
+  scale: 30,
+  region: inputParameters.defaultStudyArea,
+  maxPixels: 1e13
+});
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////// Inspector tool  /////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////

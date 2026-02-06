@@ -1,21 +1,12 @@
 {
   "inputParameters": {
+    "theTargetYear": 2023,
     "whichReduction": "NBR",
     "bandName_reduction": "nbr",
     "bandNameToFit": "nbr",
     "plottingMeans": true,
     "harmonicConstant": false,
-    "binCuts": [
-      -2,
-      -1.5,
-      -1,
-      -0.5,
-      0,
-      0.5,
-      1,
-      1.5,
-      2
-    ],
+    "binCuts": [-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2],
     "modalityDictionary": {
       "bimodal": false,
       "constant": true,
@@ -25,53 +16,137 @@
     },
     "verbose": true,
     "centeringZoom": 16,
-    "L5dictionary": {
-      "yearsList": [
-        2010
-      ],
-      "firstDOY": 1,
-      "lastDOY": 365
+    "defaultStudyAreaCoordinates": [
+      [[-123.37110512387625, 54.75169820339108],
+       [-123.37110512387625, 54.44461477475778],
+       [-122.7476310027825, 54.44461477475778],
+       [-122.7476310027825, 54.75169820339108]]
+    ],
+    "sensitivityDictionary": {
+      "ZScoreNumeratorFactor": 1,
+      "ZScoreDenominatorFactor": 0.05
     },
-    "L7dictionary": {
-      "yearsList": [
-        2010
-      ],
-      "firstDOY": 1,
-      "lastDOY": 365
-    },
-    "L8dictionary": {
-      "yearsList": [
-        2023
-      ],
-      "firstDOY": 1,
-      "lastDOY": 365,
-      "expectationCollectionParameters": {
-        "dayStepSize": 10,
-        "movingWindowSize": 20,
-        "maxCloudCover": 10
+    "expectationCollectionParameters": {
+      "whichReduction": "NBR",
+      "bandName_reduction": "nbr",
+      "dayStepSize": 10,
+      "verbose": true,
+      "datasetSelection": {
+        "L5": false,
+        "L7": false,
+        "L8": true,
+        "L9": false,
+        "MO": false,
+        "S2": false,
+        "S1": false,
+        "AL": false,
+        "NI": false,
+        "DW": false
+      },
+      "L5dictionary": {
+        "yearsList": [2021],
+        "firstDOY": 1,
+        "lastDOY": 365,
+        "CloudCoverThreshold": 45
+      },
+      "L7dictionary": {
+        "yearsList": [2021],
+        "firstDOY": 1,
+        "lastDOY": 365,
+        "CloudCoverThreshold": 47
+      },
+      "L8dictionary": {
+        "yearsList": [2021, 2022],
+        "firstDOY": 150,
+        "lastDOY": 250,
+        "CloudCoverThreshold": 20
+      },
+      "L9dictionary": {
+        "yearsList": [2021, 2022],
+        "firstDOY": 150,
+        "lastDOY": 250,
+        "CloudCoverThreshold": 20
+      },
+      "MOdictionary": {
+        "yearsList": [2021],
+        "firstDOY": 150,
+        "lastDOY": 250,
+        "CloudCoverThreshold": 40
+      },
+      "S2dictionary": {
+        "yearsList": [2021],
+        "firstDOY": 1,
+        "lastDOY": 365,
+        "CloudCoverThreshold": 70
+      },
+      "S1dictionary": {
+        "SARValueToTrack": "HV",
+        "isRadar": true,
+        "yearsList": [2021],
+        "firstDOY": 1,
+        "lastDOY": 365
       }
     },
-    "S2dictionary": {
-      "yearsList": [
-        2023
-      ],
-      "firstDOY": 1,
-      "lastDOY": 365,
-      "cloudThresh": 20,
-      "expectationCollectionParameters": {
-        "dayStepSize": 10,
-        "movingWindowSize": 20,
-        "maxCloudCover": 20
+    "targetCollectionParameters": {
+      "whichReduction": "NBR",
+      "bandName_reduction": "nbr",
+      "dayStepSize": 10,
+      "verbose": true,
+      "datasetSelection": {
+        "L5": false,
+        "L7": false,
+        "L8": true,
+        "L9": false,
+        "MO": false,
+        "S2": false,
+        "S1": false,
+        "AL": false,
+        "NI": false,
+        "DW": false
+      },
+      "L5dictionary": {
+        "yearsList": [2022],
+        "firstDOY": 115,
+        "lastDOY": 165,
+        "CloudCoverThreshold": 15
+      },
+      "L7dictionary": {
+        "yearsList": [2022],
+        "firstDOY": 117,
+        "lastDOY": 167,
+        "CloudCoverThreshold": 17
+      },
+      "L8dictionary": {
+        "yearsList": [2022, 2023],
+        "firstDOY": 150,
+        "lastDOY": 250,
+        "CloudCoverThreshold": 20
+      },
+      "L9dictionary": {
+        "yearsList": [2022, 2023],
+        "firstDOY": 150,
+        "lastDOY": 250,
+        "CloudCoverThreshold": 20
+      },
+      "MOdictionary": {
+        "yearsList": [2022],
+        "firstDOY": 110,
+        "lastDOY": 210,
+        "CloudCoverThreshold": 10
+      },
+      "S2dictionary": {
+        "yearsList": [2022],
+        "firstDOY": 1,
+        "lastDOY": 365,
+        "CloudCoverThreshold": 70
+      },
+      "S1dictionary": {
+        "SARValueToTrack": "HV",
+        "isRadar": true,
+        "yearsList": [2023],
+        "firstDOY": 1,
+        "lastDOY": 365
       }
-    },
-    "S1dictionary": {
-      "SARValueToTrack": "HV",
-      "isRadar": true,
-      "yearsList": [
-        2023
-      ],
-      "firstDOY": 1,
-      "lastDOY": 365
     }
   },
   "analysisParameters": {

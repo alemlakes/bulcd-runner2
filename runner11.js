@@ -444,7 +444,7 @@ function createSharedShims() {
   return { print, Map, ui };
 }
 
-function createModuleResolver(moduleRoot, sharedShims) {
+function createModuleResolver(moduleRoot, sharedShims, sidecarData) {
   const ABS_MOD_ROOT = path.resolve(process.cwd(), moduleRoot);
 
   return function geeRequire(importPath) {
@@ -452,6 +452,29 @@ function createModuleResolver(moduleRoot, sharedShims) {
     if (!importPath.startsWith('users/')) {
       return require(importPath);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PARAMETER INJECTION: Intercept parameter module requests
+    // When the caller requires parameter modules, return the injected JSON instead
+    // This allows the runner to work with unmodified caller scripts
+    // ═══════════════════════════════════════════════════════════════════════════
+    const lowerPath = importPath.toLowerCase();
+    
+    // Check for input parameters module
+    if (lowerPath.includes('inputparameters') && sidecarData.inputParameters) {
+      if (config.verbose) logger.info(`Parameter injection: inputParameters ← JSON sidecar`);
+      return { inputParameters: sidecarData.inputParameters };
+    }
+    
+    // Check for analysis parameters module
+    if (lowerPath.includes('analysisparameters') && sidecarData.analysisParameters) {
+      if (config.verbose) logger.info(`Parameter injection: analysisParameters ← JSON sidecar`);
+      return { analysisParameters: sidecarData.analysisParameters };
+    }
+    
+    // Note: We do NOT intercept advancedParameters - it's a complex function
+    // that generates BULC configuration. Let it load from the GEE module file.
+    // Only inputParameters and analysisParameters are overridden from JSON.
 
     // Check cache first
     if (moduleCache.has(importPath)) {
@@ -534,19 +557,21 @@ function reconstructGeometries(params) {
     logger.info('Reconstructed defaultStudyArea from coordinates');
   }
 
-  // Reconstruct AOI in sensor dictionaries
-  const sensorDicts = ['L8dictionary', 'S2dictionary'];
-  for (const sensor of sensorDicts) {
-    if (ip[sensor]?.expectationCollectionParameters?.AOICoordinates) {
-      ip[sensor].expectationCollectionParameters.AOI = ee.Geometry.Polygon(
-        ip[sensor].expectationCollectionParameters.AOICoordinates,
-        null,
-        false
-      );
-      logger.info(`Reconstructed AOI for ${sensor}`);
-    } else if (ip.defaultStudyArea && ip[sensor]?.expectationCollectionParameters) {
-      // Fallback: use defaultStudyArea as AOI
-      ip[sensor].expectationCollectionParameters.AOI = ip.defaultStudyArea;
+  // Propagate defaultStudyArea to nested collection parameters
+  if (ip.defaultStudyArea) {
+    if (ip.expectationCollectionParameters) {
+      ip.expectationCollectionParameters.defaultStudyArea = ip.defaultStudyArea;
+    }
+    if (ip.targetCollectionParameters) {
+      ip.targetCollectionParameters.defaultStudyArea = ip.defaultStudyArea;
+    }
+  }
+
+  // Reconstruct AOI in sensor dictionaries (for s2cloudless)
+  const collectionParams = ['expectationCollectionParameters', 'targetCollectionParameters'];
+  for (const cp of collectionParams) {
+    if (ip[cp]?.S2dictionary?.s2cloudless) {
+      ip[cp].S2dictionary.s2cloudless.AOI = ip.defaultStudyArea;
     }
   }
 
@@ -595,7 +620,8 @@ function createSandbox(sidecarData, moduleResolver, sharedShims) {
     Map: sharedShims.Map,
     ui: sharedShims.ui,
 
-    // Export handling
+    // Export handling - AUTO-START: tasks are submitted immediately
+    // This mirrors GEE Code Editor behavior where clicking Run starts the task
     Export: {
       image: {
         toAsset: (config) => {
@@ -604,8 +630,10 @@ function createSandbox(sidecarData, moduleResolver, sharedShims) {
             return { start: () => {} };
           }
           const task = ee.batch.Export.image.toAsset(config);
+          task.start();  // Auto-start
           submittedTasks.push({ type: 'image.toAsset', config });
-          return { start: () => task.start() };
+          logger.info(`Export started: ${config.description || config.assetId}`);
+          return { start: () => {} };  // No-op if .start() called again
         },
         toDrive: (config) => {
           if (module.exports.dryRun) {
@@ -613,8 +641,10 @@ function createSandbox(sidecarData, moduleResolver, sharedShims) {
             return { start: () => {} };
           }
           const task = ee.batch.Export.image.toDrive(config);
+          task.start();  // Auto-start
           submittedTasks.push({ type: 'image.toDrive', config });
-          return { start: () => task.start() };
+          logger.info(`Export started: ${config.description}`);
+          return { start: () => {} };
         },
         toCloudStorage: (config) => {
           if (module.exports.dryRun) {
@@ -622,8 +652,10 @@ function createSandbox(sidecarData, moduleResolver, sharedShims) {
             return { start: () => {} };
           }
           const task = ee.batch.Export.image.toCloudStorage(config);
+          task.start();  // Auto-start
           submittedTasks.push({ type: 'image.toCloudStorage', config });
-          return { start: () => task.start() };
+          logger.info(`Export started: ${config.description}`);
+          return { start: () => {} };
         }
       },
       table: {
@@ -633,8 +665,10 @@ function createSandbox(sidecarData, moduleResolver, sharedShims) {
             return { start: () => {} };
           }
           const task = ee.batch.Export.table.toAsset(config);
+          task.start();  // Auto-start
           submittedTasks.push({ type: 'table.toAsset', config });
-          return { start: () => task.start() };
+          logger.info(`Export started: ${config.description || config.assetId}`);
+          return { start: () => {} };
         },
         toDrive: (config) => {
           if (module.exports.dryRun) {
@@ -642,8 +676,10 @@ function createSandbox(sidecarData, moduleResolver, sharedShims) {
             return { start: () => {} };
           }
           const task = ee.batch.Export.table.toDrive(config);
+          task.start();  // Auto-start
           submittedTasks.push({ type: 'table.toDrive', config });
-          return { start: () => task.start() };
+          logger.info(`Export started: ${config.description}`);
+          return { start: () => {} };
         }
       },
       video: {
@@ -653,8 +689,10 @@ function createSandbox(sidecarData, moduleResolver, sharedShims) {
             return { start: () => {} };
           }
           const task = ee.batch.Export.video.toDrive(config);
+          task.start();  // Auto-start
           submittedTasks.push({ type: 'video.toDrive', config });
-          return { start: () => task.start() };
+          logger.info(`Export started: ${config.description}`);
+          return { start: () => {} };
         }
       }
     },
@@ -765,8 +803,8 @@ async function runExperiment(userScript, moduleRoot, sidecarPath) {
           // Create shared shims for print, Map, ui (used by modules)
           const sharedShims = createSharedShims();
           
-          // Create sandbox and resolver with shared shims
-          const moduleResolver = createModuleResolver(moduleRoot, sharedShims);
+          // Create sandbox and resolver with shared shims and parameter injection
+          const moduleResolver = createModuleResolver(moduleRoot, sharedShims, sidecarData);
           const sandbox = createSandbox(sidecarData, moduleResolver, sharedShims);
 
           // Read and execute caller script
