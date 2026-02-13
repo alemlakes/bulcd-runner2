@@ -1,7 +1,7 @@
 /*
 This script runs the BULC-D algorithm for land cover classification analysis using the 
 Bayesian Updating of Land Cover with Deviation (BULC-D) module.
- 
+  
 How to use the Script:
 
 1. Set Verbose Mode (Optional):
@@ -36,7 +36,7 @@ How to use the Script:
 // This version is equivalent to 
 // the below version number 
 // in the Cardille lab development environment  
-var theVersion = "V51e" 
+var theVersion = "V51f" 
 print("BULC-D-Caller, Version ", theVersion)
 
 var verbose = true
@@ -60,6 +60,7 @@ var afn_organizeBULCD_Inputs = require('users/alemlakes/r-2903-Dev:BULC/BULCD/BU
 var advancedParameters = require('users/alemlakes/r-2909-BULC-Releases:BULC/BULC-Callers-Current/BULCD-Caller-Parameters/BULCD-AdvancedParameters-v5').advancedParameters;
 var inputParameters =    require('users/alemlakes/r-2909-BULC-Releases:BULC/BULC-Callers-Current/BULCD-Caller-Parameters/BULCD-InputParameters-v5').inputParameters;
 var analysisParameters = require('users/alemlakes/r-2909-BULC-Releases:BULC/BULC-Callers-Current/BULCD-Caller-Parameters/BULCD-AnalysisParameters-v5').analysisParameters;
+var exportParams = require('users/alemlakes/r-2909-BULC-Releases:BULC/BULC-Callers-Current/BULCD-Caller-Parameters/BULCD-ExportParameters-v5').exportParameters;
 
 // Stage 3: Analysis.
 var interpretResults = require('users/alemlakes/r-2902-Dev:BULC/BULCD/BULCD-Code/BULCD-Module/6002.C2-BULCD-Module-analyzeOutputs').afn_interpretBULCDResult;
@@ -170,16 +171,110 @@ print("Parameters for post run analysis", var_args_analysis)
 
 var bulcD_output = interpretResults(var_args_analysis);
 
-Export.image.toAsset({
-  image: finalBulcProbs.clip(inputParameters.defaultStudyArea),
-  description: 'Export_BULCD_Final_Probabilities',
-  assetId: "BULCD_Result_" + inputParameters.theTargetYear + "_" + theVersion,
-  scale: 30,
-  region: inputParameters.defaultStudyArea,
-  maxPixels: 1e13
-});
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////// Export  /////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////// Inspector tool  /////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+var bands = exportParams.includeBands || {};
+
+var exportImage = ee.Image([]);
+
+if (bands.finalBULCProbs && bands.finalBULCProbs.enabled) {
+    exportImage = exportImage
+        .addBands(finalBulcProbs.select([0], ['prob_decrease']))
+        .addBands(finalBulcProbs.select([1], ['prob_unchanged']))
+        .addBands(finalBulcProbs.select([2], ['prob_increase']));
+}
+
+if (bands.probabilityDecrease && bands.probabilityDecrease.enabled) {
+    exportImage = exportImage.addBands(finalBulcProbs.select([0], ['probability_decrease']));
+}
+
+if (bands.probabilityUnchanged && bands.probabilityUnchanged.enabled) {
+    exportImage = exportImage.addBands(finalBulcProbs.select([1], ['probability_unchanged']));
+}
+
+if (bands.probabilityIncrease && bands.probabilityIncrease.enabled) {
+    exportImage = exportImage.addBands(finalBulcProbs.select([2], ['probability_increase']));
+}
+
+if (bands.expectationSummaryValue && bands.expectationSummaryValue.enabled) {
+    exportImage = exportImage.addBands(expectationPeriodSummaryValue.rename('expectation_summary').updateMask(theWaterMask));
+}
+
+if (bands.expectationStdDev && bands.expectationStdDev.enabled) {
+    exportImage = exportImage.addBands(expectationPeriodSD.rename('expectation_stddev').updateMask(theWaterMask));
+}
+
+if (bands.expectationR2 && bands.expectationR2.enabled && bulcD_input.theExpectationR2) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_input.theExpectationR2).rename('expectation_r2').updateMask(theWaterMask));
+}
+
+if (bands.expectationResiduals && bands.expectationResiduals.enabled && bulcD_input.theExpectationResiduals) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_input.theExpectationResiduals).rename('expectation_residuals').updateMask(theWaterMask));
+}
+
+if (bands.targetSummaryValue && bands.targetSummaryValue.enabled) {
+    exportImage = exportImage.addBands(targetPeriodSummaryValue.rename('target_summary').updateMask(theWaterMask));
+}
+
+if (bands.dropProbability && bands.dropProbability.enabled && bulcD_output.drop) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_output.drop).rename('drop_probability').updateMask(theWaterMask));
+}
+
+if (bands.gainProbability && bands.gainProbability.enabled && bulcD_output.up) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_output.up).rename('gain_probability').updateMask(theWaterMask));
+}
+
+if (bands.largeDropOrange && bands.largeDropOrange.enabled && bulcD_output.largeDropOrange) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_output.largeDropOrange).rename('large_drop_orange').updateMask(theWaterMask));
+}
+
+if (bands.threeColorChange && bands.threeColorChange.enabled && bulcD_output.drop && bulcD_output.largeDropOrange && bulcD_output.up) {
+    var threeColor = ee.Image(bulcD_output.drop).unmask()
+        .where(ee.Image(bulcD_output.drop).eq(1), 1)
+        .where(ee.Image(bulcD_output.largeDropOrange).eq(1), 2)
+        .where(ee.Image(bulcD_output.up).eq(1), 3)
+        .selfMask();
+    exportImage = exportImage.addBands(threeColor.rename('three_color_change'));
+}
+
+if (bands.wasItEver && bands.wasItEver.enabled && bulcD_output.wasItEver) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_output.wasItEver).rename('was_it_ever').selfMask());
+}
+
+if (bands.howOftenWasIt && bands.howOftenWasIt.enabled && bulcD_output.howOftenWasIt) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_output.howOftenWasIt).rename('how_often_was_it').selfMask());
+}
+
+if (bands.orangeChangeDOY && bands.orangeChangeDOY.enabled && bulcD_output.timing && bulcD_output.timing.orangeDateDOY) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_output.timing.orangeDateDOY).rename('orange_change_doy'));
+}
+
+if (bands.pinkChangeDOY && bands.pinkChangeDOY.enabled && bulcD_output.timing && bulcD_output.timing.pinkDateDOY) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_output.timing.pinkDateDOY).rename('pink_change_doy'));
+}
+
+if (bands.orangeStepDating && bands.orangeStepDating.enabled && bulcD_output.timing && bulcD_output.timing.orangeStepDating) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_output.timing.orangeStepDating).rename('orange_step_dating'));
+}
+
+if (bands.pinkStepDating && bands.pinkStepDating.enabled && bulcD_output.timing && bulcD_output.timing.pinkStepDating) {
+    exportImage = exportImage.addBands(ee.Image(bulcD_output.timing.pinkStepDating).rename('pink_step_dating'));
+}
+
+if (exportParams.enabled !== false) {
+    var assetId = exportParams.assetId
+    var description = exportParams.description
+    
+    Export.image.toAsset({
+        image: exportImage.toFloat(),
+        description: description,
+        assetId: assetId,
+        region: inputParameters.defaultStudyArea,
+        scale: 30,
+        maxPixels: 1e13
+    });
+}
+
 

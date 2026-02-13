@@ -6,7 +6,17 @@
     "bandNameToFit": "nbr",
     "plottingMeans": true,
     "harmonicConstant": false,
-    "binCuts": [-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2],
+    "binCuts": [
+      -2,
+      -1.5,
+      -1,
+      -0.5,
+      0,
+      0.5,
+      1,
+      1.5,
+      2
+    ],
     "modalityDictionary": {
       "bimodal": false,
       "constant": true,
@@ -17,10 +27,24 @@
     "verbose": true,
     "centeringZoom": 16,
     "defaultStudyAreaCoordinates": [
-      [[-123.37110512387625, 54.75169820339108],
-       [-123.37110512387625, 54.44461477475778],
-       [-122.7476310027825, 54.44461477475778],
-       [-122.7476310027825, 54.75169820339108]]
+      [
+        [
+          -123.37110512387625,
+          54.75169820339108
+        ],
+        [
+          -123.37110512387625,
+          54.44461477475778
+        ],
+        [
+          -122.7476310027825,
+          54.44461477475778
+        ],
+        [
+          -122.7476310027825,
+          54.75169820339108
+        ]
+      ]
     ],
     "sensitivityDictionary": {
       "ZScoreNumeratorFactor": 1,
@@ -44,37 +68,51 @@
         "DW": false
       },
       "L5dictionary": {
-        "yearsList": [2021],
+        "yearsList": [
+          2021
+        ],
         "firstDOY": 1,
         "lastDOY": 365,
         "CloudCoverThreshold": 45
       },
       "L7dictionary": {
-        "yearsList": [2021],
+        "yearsList": [
+          2021
+        ],
         "firstDOY": 1,
         "lastDOY": 365,
         "CloudCoverThreshold": 47
       },
       "L8dictionary": {
-        "yearsList": [2021, 2022],
+        "yearsList": [
+          2021,
+          2022
+        ],
         "firstDOY": 150,
         "lastDOY": 250,
         "CloudCoverThreshold": 20
       },
       "L9dictionary": {
-        "yearsList": [2021, 2022],
+        "yearsList": [
+          2021,
+          2022
+        ],
         "firstDOY": 150,
         "lastDOY": 250,
         "CloudCoverThreshold": 20
       },
       "MOdictionary": {
-        "yearsList": [2021],
+        "yearsList": [
+          2021
+        ],
         "firstDOY": 150,
         "lastDOY": 250,
         "CloudCoverThreshold": 40
       },
       "S2dictionary": {
-        "yearsList": [2021],
+        "yearsList": [
+          2021
+        ],
         "firstDOY": 1,
         "lastDOY": 365,
         "CloudCoverThreshold": 70
@@ -82,7 +120,9 @@
       "S1dictionary": {
         "SARValueToTrack": "HV",
         "isRadar": true,
-        "yearsList": [2021],
+        "yearsList": [
+          2021
+        ],
         "firstDOY": 1,
         "lastDOY": 365
       }
@@ -105,37 +145,51 @@
         "DW": false
       },
       "L5dictionary": {
-        "yearsList": [2022],
+        "yearsList": [
+          2022
+        ],
         "firstDOY": 115,
         "lastDOY": 165,
         "CloudCoverThreshold": 15
       },
       "L7dictionary": {
-        "yearsList": [2022],
+        "yearsList": [
+          2022
+        ],
         "firstDOY": 117,
         "lastDOY": 167,
         "CloudCoverThreshold": 17
       },
       "L8dictionary": {
-        "yearsList": [2022, 2023],
+        "yearsList": [
+          2022,
+          2023
+        ],
         "firstDOY": 150,
         "lastDOY": 250,
         "CloudCoverThreshold": 20
       },
       "L9dictionary": {
-        "yearsList": [2022, 2023],
+        "yearsList": [
+          2022,
+          2023
+        ],
         "firstDOY": 150,
         "lastDOY": 250,
         "CloudCoverThreshold": 20
       },
       "MOdictionary": {
-        "yearsList": [2022],
+        "yearsList": [
+          2022
+        ],
         "firstDOY": 110,
         "lastDOY": 210,
         "CloudCoverThreshold": 10
       },
       "S2dictionary": {
-        "yearsList": [2022],
+        "yearsList": [
+          2022
+        ],
         "firstDOY": 1,
         "lastDOY": 365,
         "CloudCoverThreshold": 70
@@ -143,7 +197,9 @@
       "S1dictionary": {
         "SARValueToTrack": "HV",
         "isRadar": true,
-        "yearsList": [2023],
+        "yearsList": [
+          2023
+        ],
         "firstDOY": 1,
         "lastDOY": 365
       }
@@ -171,5 +227,91 @@
     "RecordFinalClass": true,
     "initializationApproach": "unimodal",
     "transitionCreationMethod": "standard"
+  },
+  "exportParameters": {
+    "enabled": true,
+    "assetId": "projects/api-project-269347469410/assets/BULCD_Result",
+    "description": "BULCD_Multiband_Export",
+    "scale": 30,
+    "maxPixels": 1e13,
+    
+    "includeBands": {
+      "finalBULCProbs": {
+        "enabled": true,
+        "comment": "3-band RGB: [decrease, unchanged, increase] probabilities"
+      },
+      "probabilityDecrease": {
+        "enabled": true,
+        "comment": "Single band: Probability of value decrease"
+      },
+      "probabilityUnchanged": {
+        "enabled": false,
+        "comment": "Single band: Probability of value unchanged"
+      },
+      "probabilityIncrease": {
+        "enabled": false,
+        "comment": "Single band: Probability of value increase"
+      },
+      "expectationSummaryValue": {
+        "enabled": true,
+        "comment": "Expectation period summary value"
+      },
+      "expectationStdDev": {
+        "enabled": false,
+        "comment": "Expectation period standard deviation"
+      },
+      "expectationR2": {
+        "enabled": false,
+        "comment": "Expectation period adjusted R2"
+      },
+      "expectationResiduals": {
+        "enabled": false,
+        "comment": "Expectation period residuals"
+      },
+      "targetSummaryValue": {
+        "enabled": true,
+        "comment": "Target period summary value"
+      },
+      "dropProbability": {
+        "enabled": true,
+        "comment": "Pink layer: probability of drop (any size)"
+      },
+      "gainProbability": {
+        "enabled": false,
+        "comment": "Blue layer: probability of increase (any size)"
+      },
+      "largeDropOrange": {
+        "enabled": true,
+        "comment": "Orange layer: large drops in target year"
+      },
+      "threeColorChange": {
+        "enabled": false,
+        "comment": "Composite: pink=1, orange=2, blue=3"
+      },
+      "wasItEver": {
+        "enabled": false,
+        "comment": "Yellow layer: was it ever past threshold"
+      },
+      "howOftenWasIt": {
+        "enabled": false,
+        "comment": "Yellow scaled: proportion of time it was changey"
+      },
+      "orangeChangeDOY": {
+        "enabled": true,
+        "comment": "DOY of orange change detection"
+      },
+      "pinkChangeDOY": {
+        "enabled": false,
+        "comment": "DOY of pink change detection"
+      },
+      "orangeStepDating": {
+        "enabled": false,
+        "comment": "Relative timing of orange change"
+      },
+      "pinkStepDating": {
+        "enabled": false,
+        "comment": "Relative timing of pink change"
+      }
+    }
   }
 }

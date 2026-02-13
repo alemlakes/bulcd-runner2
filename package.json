@@ -10,7 +10,8 @@
     "setup": "node setup-gee-repos.js",
     "setup:scan": "node setup-gee-repos.js --scan-only",
     "test": "node runner11.js scripts_to_run/BULCD-Caller-v51e.js gee_modules experiments/BULCD-Params.json --dry-run",
-    "run:default": "node runner11.js scripts_to_run/BULCD-Caller-v51f.js gee_modules experiments/BULCD-Params.json --quiet",
+    "run:default": "node runner11.js scripts_to_run/BULCD-Caller-Current.js gee_modules experiments/BULCD-Params.json --quiet",
+    "run:export": "node runner11.js scripts_to_run/BULCD-Caller-Export.js gee_modules experiments/BULCD-Params.json",
     "validate": "node runner11.js scripts_to_run/BULCD-Caller-v51f.js gee_modules experiments/ --batch --dry-run"
   },
   "keywords": [

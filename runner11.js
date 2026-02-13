@@ -343,12 +343,12 @@ function createSharedShims() {
   const print = (...args) => {
     // No-op by default in modules, main sandbox overrides for logging
   };
-  
+
   // Comprehensive Map shim
   const Map = {
     addLayer: () => {},
     remove: () => {},
-    layers: () => ({ 
+    layers: () => ({
       get: () => null, set: () => {}, length: () => 0, reset: () => {},
       forEach: () => {}, map: () => [], insert: () => {}, remove: () => {}
     }),
@@ -357,7 +357,7 @@ function createSharedShims() {
     setZoom: () => {},
     getZoom: () => 10,
     getCenter: () => ({ lon: () => 0, lat: () => 0 }),
-    getBounds: (asGeoJSON) => asGeoJSON 
+    getBounds: (asGeoJSON) => asGeoJSON
       ? { type: 'Polygon', coordinates: [[[-180,-90],[-180,90],[180,90],[180,-90],[-180,-90]]] }
       : ee.Geometry.Rectangle([-180, -90, 180, 90]),
     getScale: () => 1000,
@@ -384,7 +384,7 @@ function createSharedShims() {
     insert: () => {},
     clear: () => {}
   };
-  
+
   // UI shims
   const ui = {
     Chart: {
@@ -406,14 +406,14 @@ function createSharedShims() {
       }
     },
     Label: (text, style) => ({ style: () => ({ set: () => ({}) }), setValue: () => {} }),
-    Panel: (widgets, layout, style) => ({ 
+    Panel: (widgets, layout, style) => ({
       add: () => ({}), insert: () => {}, remove: () => {}, clear: () => {},
-      style: () => ({ set: () => ({}) }), 
+      style: () => ({ set: () => ({}) }),
       widgets: () => ({ get: () => [], set: () => {}, add: () => {}, reset: () => {} }),
       getLayout: () => ({})
     }),
     Button: (label, onClick, disabled, style) => ({ style: () => ({ set: () => ({}) }), setLabel: () => {}, onClick: () => {} }),
-    Select: (items, placeholder, value, onChange, disabled, style) => ({ 
+    Select: (items, placeholder, value, onChange, disabled, style) => ({
       style: () => ({ set: () => ({}) }), setValue: () => {}, getValue: () => null, setPlaceholder: () => {}
     }),
     Slider: (options) => ({ style: () => ({ set: () => ({}) }), setValue: () => {}, getValue: () => 0, onChange: () => {} }),
@@ -440,7 +440,7 @@ function createSharedShims() {
       activeValue: (name, defaultValue) => defaultValue
     }
   };
-  
+
   return { print, Map, ui };
 }
 
@@ -459,19 +459,33 @@ function createModuleResolver(moduleRoot, sharedShims, sidecarData) {
     // This allows the runner to work with unmodified caller scripts
     // ═══════════════════════════════════════════════════════════════════════════
     const lowerPath = importPath.toLowerCase();
-    
+
     // Check for input parameters module
     if (lowerPath.includes('inputparameters') && sidecarData.inputParameters) {
       if (config.verbose) logger.info(`Parameter injection: inputParameters ← JSON sidecar`);
-      return { inputParameters: sidecarData.inputParameters };
+      
+      // Merge exportParameters into inputParameters if present
+      const injectedParams = { ...sidecarData.inputParameters };
+      if (sidecarData.exportParameters) {
+        injectedParams.exportParameters = sidecarData.exportParameters;
+        if (config.verbose) logger.info(`Parameter injection: exportParameters merged into inputParameters`);
+      }
+      
+      return { inputParameters: injectedParams };
     }
-    
+
     // Check for analysis parameters module
     if (lowerPath.includes('analysisparameters') && sidecarData.analysisParameters) {
       if (config.verbose) logger.info(`Parameter injection: analysisParameters ← JSON sidecar`);
       return { analysisParameters: sidecarData.analysisParameters };
     }
-    
+
+    // Check for export parameters module
+    if (lowerPath.includes('exportparameters') && sidecarData.exportParameters) {
+      if (config.verbose) logger.info(`Parameter injection: exportParameters ← JSON sidecar`);
+      return { exportParameters: sidecarData.exportParameters };
+    }
+
     // Note: We do NOT intercept advancedParameters - it's a complex function
     // that generates BULC configuration. Let it load from the GEE module file.
     // Only inputParameters and analysisParameters are overridden from JSON.
@@ -802,7 +816,7 @@ async function runExperiment(userScript, moduleRoot, sidecarPath) {
 
           // Create shared shims for print, Map, ui (used by modules)
           const sharedShims = createSharedShims();
-          
+
           // Create sandbox and resolver with shared shims and parameter injection
           const moduleResolver = createModuleResolver(moduleRoot, sharedShims, sidecarData);
           const sandbox = createSandbox(sidecarData, moduleResolver, sharedShims);

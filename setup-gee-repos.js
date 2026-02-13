@@ -28,14 +28,14 @@ const config = {
   rawReposDir: path.join(__dirname, 'gee_repos_raw'),
 
   // Default repositories to clone
+  // Only repos needed for BULCD-Caller-Current from r-2909-BULC-Releases
   // Format: { name: 'repo-name', target: 'folder-name' }
   defaultRepos: [
-    { name: 'r-2903-Dev', target: 'r-2903-Dev' },
-    { name: 'r-2909-BULC-Releases', target: 'r-2909-BULC-Releases' },
-    { name: 'r-2902-Dev', target: 'r-2902-Dev' },
-    { name: 'r-2901-BULC-Dev', target: 'r-2901-BULC-Dev' },
-    { name: 'CommonCode', target: 'CommonCode' },
-    { name: 'CommonCode2', target: 'CommonCode2' },
+    { name: 'r-2909-BULC-Releases', target: 'r-2909-BULC-Releases' },  // Caller + parameters
+    { name: 'r-2903-Dev', target: 'r-2903-Dev' },                      // BULCD module
+    { name: 'r-2902-Dev', target: 'r-2902-Dev' },                      // Analysis outputs
+    { name: 'CommonCode', target: 'CommonCode' },                      // Water mask, utilities
+    { name: 'CommonCode2', target: 'CommonCode2' },                    // Harmonics, gathering (transitive)
   ]
 };
 
@@ -168,64 +168,144 @@ function configureGitCredentials() {
   }
 }
 
-function cloneRepo(repoName, targetFolder, username) {
+/**
+ * Clone a repo to the raw storage directory
+ */
+function cloneRepoToRaw(repoName, username) {
   const repoUrl = `${config.geeBaseUrl}/users/${username}/${repoName}`;
   const clonePath = path.join(config.rawReposDir, repoName);
-  const targetPath = path.join(config.geeModulesDir, targetFolder);
 
-  console.log(Style.info(`Cloning: ${repoName} → ${targetFolder}`));
+  console.log(Style.info(`Fetching: ${repoName}`));
 
-  // Create raw repos directory
   fs.mkdirSync(config.rawReposDir, { recursive: true });
-
-  // Always clean target directory to ensure fresh state
-  if (fs.existsSync(targetPath)) {
-    fs.rmSync(targetPath, { recursive: true, force: true });
-  }
-  fs.mkdirSync(targetPath, { recursive: true });
 
   try {
     if (fs.existsSync(clonePath)) {
-      // Reset and pull latest
       console.log(Style.dim(`  Pulling latest changes...`));
       execSync(`git -C "${clonePath}" fetch --all`, { stdio: 'pipe' });
       execSync(`git -C "${clonePath}" reset --hard origin/master`, { stdio: 'pipe' });
     } else {
-      // Clone fresh
       execSync(`git clone "${repoUrl}" "${clonePath}"`, { stdio: 'pipe' });
     }
-
-    // Copy GEE files to target (add .js extension if missing, strip print statements)
-    const geeFiles = findGeeFiles(clonePath);
-    let copiedCount = 0;
-
-    for (const srcFile of geeFiles) {
-      const relPath = path.relative(clonePath, srcFile);
-
-      // Add .js extension if file doesn't end with .js
-      let destPath = relPath;
-      if (!relPath.endsWith('.js')) {
-        destPath = relPath + '.js';
-      }
-
-      const destFile = path.join(targetPath, destPath);
-
-      fs.mkdirSync(path.dirname(destFile), { recursive: true });
-
-      // Copy file (print/Map statements handled by runner shims)
-      fs.copyFileSync(srcFile, destFile);
-      copiedCount++;
-    }
-
-    console.log(Style.success(`Cloned: ${repoName} (${copiedCount} files)`));
-    return { success: true, files: copiedCount };
-
+    console.log(Style.success(`Fetched: ${repoName}`));
+    return { success: true };
   } catch (err) {
-    console.log(Style.error(`Failed to clone ${repoName}`));
-    console.log(Style.dim(`  URL: ${repoUrl}`));
-    console.log(Style.dim(`  Error: ${err.message}`));
+    console.log(Style.error(`Failed to fetch ${repoName}: ${err.message}`));
     return { success: false, error: err.message };
   }
+}
+
+/**
+ * Resolve a GEE import path to a local file in raw repos
+ */
+function resolveGeeImport(importPath, username) {
+  // Parse: users/username/repo:internal/path
+  const parts = importPath.split(':');
+  const repoPath = parts[0];  // users/username/repo
+  const internalPath = parts[1] || '';
+  
+  const repoName = repoPath.split('/').pop();
+  
+  // Try with and without .js extension
+  let localPath = path.join(config.rawReposDir, repoName, internalPath);
+  
+  if (fs.existsSync(localPath + '.js')) {
+    return localPath + '.js';
+  }
+  if (fs.existsSync(localPath)) {
+    return localPath;
+  }
+  
+  return null;
+}
+
+/**
+ * Scan a file for GEE require() statements
+ */
+function scanFileForDependencies(filePath) {
+  const deps = new Set();
+  
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const requireRegex = /require\s*\(\s*['"]users\/([^'"]+)['"]\s*\)/g;
+    let match;
+    
+    while ((match = requireRegex.exec(content)) !== null) {
+      deps.add('users/' + match[1]);
+    }
+  } catch (e) {
+    // Ignore read errors
+  }
+  
+  return Array.from(deps);
+}
+
+/**
+ * Recursively find all dependencies starting from a file
+ */
+function findAllDependencies(startFile, username) {
+  const visited = new Set();
+  const allFiles = new Set();
+  const queue = [startFile];
+  
+  while (queue.length > 0) {
+    const currentFile = queue.shift();
+    
+    if (visited.has(currentFile)) continue;
+    visited.add(currentFile);
+    
+    if (!fs.existsSync(currentFile)) continue;
+    
+    allFiles.add(currentFile);
+    
+    const deps = scanFileForDependencies(currentFile);
+    
+    for (const dep of deps) {
+      const resolvedPath = resolveGeeImport(dep, username);
+      if (resolvedPath && !visited.has(resolvedPath)) {
+        queue.push(resolvedPath);
+      }
+    }
+  }
+  
+  return Array.from(allFiles);
+}
+
+/**
+ * Copy only the needed files from raw repos to gee_modules
+ */
+function copyNeededFiles(files, username) {
+  // Clean gee_modules directory
+  if (fs.existsSync(config.geeModulesDir)) {
+    fs.rmSync(config.geeModulesDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(config.geeModulesDir, { recursive: true });
+  
+  let copiedCount = 0;
+  const copiedRepos = new Set();
+  
+  for (const srcFile of files) {
+    // Find which repo this file belongs to
+    const relToRaw = path.relative(config.rawReposDir, srcFile);
+    const repoName = relToRaw.split(path.sep)[0];
+    const internalPath = relToRaw.substring(repoName.length + 1);
+    
+    copiedRepos.add(repoName);
+    
+    // Destination path (add .js if missing)
+    let destPath = internalPath;
+    if (!destPath.endsWith('.js')) {
+      destPath = destPath + '.js';
+    }
+    
+    const destFile = path.join(config.geeModulesDir, repoName, destPath);
+    
+    fs.mkdirSync(path.dirname(destFile), { recursive: true });
+    fs.copyFileSync(srcFile, destFile);
+    copiedCount++;
+  }
+  
+  return { copiedCount, repos: Array.from(copiedRepos) };
 }
 
 function findJsFiles(dir) {
@@ -390,12 +470,12 @@ function generateModuleMap(username) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Copy/update caller scripts from gee_modules to scripts_to_run
- * Only copies from r-2903-Dev/BULC/BULCD/BULCD-Callers/BULCD-Caller/
+ * Copy/update caller scripts from raw repos to scripts_to_run
+ * Only copies BULCD-Caller-Current.js from r-2909-BULC-Releases
  */
 function updateCallerScripts() {
   const scriptsDir = path.join(config.scriptDir, 'scripts_to_run');
-  const callerSourceDir = path.join(config.geeModulesDir, 'r-2903-Dev/BULC/BULCD/BULCD-Callers/BULCD-Caller');
+  const callerSourceDir = path.join(config.rawReposDir, 'r-2909-BULC-Releases/BULC/BULC-Callers-Current/BULCD-Caller');
   
   // Ensure scripts_to_run directory exists
   fs.mkdirSync(scriptsDir, { recursive: true });
@@ -405,26 +485,20 @@ function updateCallerScripts() {
     return;
   }
   
-  let copiedCount = 0;
-  
-  // Copy all BULCD-Caller-*.js files from the source directory
-  const entries = fs.readdirSync(callerSourceDir, { withFileTypes: true });
-  
-  for (const entry of entries) {
-    if (entry.isFile() && entry.name.startsWith('BULCD-Caller-') && entry.name.endsWith('.js')) {
-      const srcPath = path.join(callerSourceDir, entry.name);
-      const destPath = path.join(scriptsDir, entry.name);
-      
-      fs.copyFileSync(srcPath, destPath);
-      console.log(Style.success(`Updated: scripts_to_run/${entry.name}`));
-      copiedCount++;
-    }
+  // Copy BULCD-Caller-Current (with or without .js extension)
+  const callerFile = 'BULCD-Caller-Current';
+  let srcPath = path.join(callerSourceDir, callerFile + '.js');
+  if (!fs.existsSync(srcPath)) {
+    srcPath = path.join(callerSourceDir, callerFile);
   }
   
-  if (copiedCount === 0) {
-    console.log(Style.warning('No BULCD-Caller scripts found'));
+  const destPath = path.join(scriptsDir, callerFile + '.js');
+  
+  if (fs.existsSync(srcPath)) {
+    fs.copyFileSync(srcPath, destPath);
+    console.log(Style.success(`Updated: scripts_to_run/${callerFile}.js`));
   } else {
-    console.log(Style.info(`Updated ${copiedCount} caller script(s)`));
+    console.log(Style.warning(`Caller not found: ${srcPath}`));
   }
 }
 
@@ -511,54 +585,77 @@ ${Style.bold('Authentication:')}
     repos = config.defaultRepos;
   }
 
-  // Clone repos
-  section('Cloning Repositories');
+  // Step 1: Fetch all repos to raw storage
+  section('Fetching Repositories');
 
-  console.log(Style.info(`Cloning ${repos.length} repositories...`));
+  console.log(Style.info(`Fetching ${repos.length} repositories to raw storage...`));
   console.log('');
 
-  const results = [];
+  const fetchResults = [];
   for (const repo of repos) {
-    const result = cloneRepo(repo.name, repo.target, config.geeUsername);
-    results.push({ ...repo, ...result });
-    console.log('');
+    const result = cloneRepoToRaw(repo.name, config.geeUsername);
+    fetchResults.push({ ...repo, ...result });
   }
 
-  // Scan dependencies
-  scanDependencies();
+  const fetchSuccess = fetchResults.filter(r => r.success).length;
+  const fetchFailed = fetchResults.filter(r => !r.success).length;
+  console.log('');
+  console.log(Style.info(`Fetched: ${fetchSuccess}/${repos.length} repos`));
 
-  // Generate module map
-  generateModuleMap(config.geeUsername);
+  if (fetchFailed > 0) {
+    console.log(Style.error(`Failed to fetch ${fetchFailed} repos`));
+  }
 
-  // Copy caller scripts to scripts_to_run/
+  // Step 2: Find the caller and its dependencies
+  section('Analyzing Dependencies');
+
+  // Try with and without .js extension
+  let callerPath = path.join(config.rawReposDir, 'r-2909-BULC-Releases/BULC/BULC-Callers-Current/BULCD-Caller/BULCD-Caller-Current.js');
+  if (!fs.existsSync(callerPath)) {
+    callerPath = path.join(config.rawReposDir, 'r-2909-BULC-Releases/BULC/BULC-Callers-Current/BULCD-Caller/BULCD-Caller-Current');
+  }
+  
+  if (!fs.existsSync(callerPath)) {
+    console.log(Style.error(`Caller not found in raw repos`));
+    process.exit(1);
+  }
+
+  console.log(Style.info(`Starting from: BULCD-Caller-Current.js`));
+  
+  const neededFiles = findAllDependencies(callerPath, config.geeUsername);
+  console.log(Style.success(`Found ${neededFiles.length} files needed for execution`));
+
+  // Step 3: Copy only needed files to gee_modules
+  section('Copying Required Files');
+
+  const { copiedCount, repos: usedRepos } = copyNeededFiles(neededFiles, config.geeUsername);
+  
+  console.log(Style.success(`Copied ${copiedCount} files to gee_modules/`));
+  console.log(Style.info(`From repos: ${usedRepos.join(', ')}`));
+
+  // Step 4: Copy caller to scripts_to_run
   section('Updating Caller Scripts');
   updateCallerScripts();
 
   // Summary
   section('Summary');
 
-  const successful = results.filter(r => r.success).length;
-  const failed = results.filter(r => !r.success).length;
-
   console.log('');
-  console.log(`Total: ${results.length} | ${Style.green(`Success: ${successful}`)} | ${Style.red(`Failed: ${failed}`)}`);
+  console.log(Style.success(`Caller: BULCD-Caller-Current.js`));
+  console.log(Style.success(`Dependencies: ${copiedCount} files from ${usedRepos.length} repos`));
   console.log('');
-
-  for (const r of results) {
-    if (r.success) {
-      console.log(Style.success(`${r.name} → gee_modules/${r.target}/ (${r.files} files)`));
-    } else {
-      console.log(Style.error(`${r.name}: ${r.error}`));
-    }
+  
+  for (const repo of usedRepos) {
+    const repoFiles = neededFiles.filter(f => f.includes(`/${repo}/`)).length;
+    console.log(`  ${Style.cyan('•')} ${repo}: ${repoFiles} files`);
   }
 
   console.log('');
   console.log(Style.info('Next steps:'));
   console.log('  1. Add your service-account-key.json');
-  console.log('  2. Run: npm test');
-  console.log('  3. Run: node runner11.js --help');
+  console.log('  2. Run: npm run run:default');
 
-  process.exit(failed > 0 ? 1 : 0);
+  process.exit(0);
 }
 
 main().catch(err => {
