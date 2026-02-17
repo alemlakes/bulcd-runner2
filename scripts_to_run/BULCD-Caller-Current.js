@@ -36,7 +36,7 @@ How to use the Script:
 // This version is equivalent to 
 // the below version number 
 // in the Cardille lab development environment  
-var theVersion = "V51f" 
+var theVersion = "V52a" 
 print("BULC-D-Caller, Version ", theVersion)
 
 var verbose = true

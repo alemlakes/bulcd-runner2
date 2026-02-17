@@ -1,9 +1,37 @@
 ## Installing Dependencies
 
+### Node.js
+
 First install Node.js (LTS recommended) from `https://nodejs.org`, then install project packages:
 
 ```bash
 npm install
+```
+
+### Google Cloud CLI (`gcloud`)
+
+Install the `gcloud` CLI, which is required for authenticating with Google Earth Engine and managing GEE module repos.
+
+**macOS** (via Homebrew):
+
+```bash
+brew install --cask google-cloud-sdk
+```
+
+**macOS / Linux** (manual):
+
+```bash
+curl https://sdk.cloud.google.com | bash
+exec -l $SHELL   # restart your shell
+```
+
+**Windows**: Download and run the installer from `https://cloud.google.com/sdk/docs/install`.
+
+After installing, initialize and log in:
+
+```bash
+gcloud init
+gcloud auth login
 ```
 
 ## Cloning the Repository
