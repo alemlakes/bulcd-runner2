@@ -62,13 +62,7 @@ export GEE_KEY_PATH=/absolute/path/to/your-service-account-key.json
 
 ## Running the Runner
 
-Run a dry validation (no GEE calls):
-
-```bash
-node runner11.js scripts_to_run/BULCD-Caller-v51e.js gee_modules experiments/BULCD-Params.json --dry-run
-```
-
-Run a full experiment:
+Run an experiment:
 
 ```bash
 node runner11.js scripts_to_run/BULCD-Caller-v51e.js gee_modules experiments/BULCD-Params.json
