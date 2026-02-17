@@ -66,7 +66,7 @@ export GEE_KEY_PATH=/absolute/path/to/your-service-account-key.json
 Run an experiment:
 
 ```bash
-node runner11.js scripts_to_run/BULCD-Caller-Current.js gee_modules experiments/BULCD-Params.json
+node runner11.js scripts_to_run/BULCD-Caller-Current.js gee_modules experiments/BULCD-Params.json --quiet
 ```
 
 Or use the npm scripts if defined in `package.json`:
